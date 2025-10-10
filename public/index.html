@@ -43,22 +43,17 @@ let historyStack = [];
 let historyPos = -1;
 
 function loadUrl(raw) {
-  // if looks like URL, use as-is; otherwise search DuckDuckGo
   try {
     new URL(raw);
-    // full URL
     goProxy(raw);
   } catch {
-    // treat as search
     const q = encodeURIComponent(raw);
     goProxy('https://duckduckgo.com/?q=' + q);
   }
 }
 
 function goProxy(url) {
-  // set iframe src to our server proxy
   const proxied = '/proxy?u=' + encodeURIComponent(url);
-  // push history
   if (historyPos === -1 || historyStack[historyPos] !== proxied) {
     historyStack = historyStack.slice(0, historyPos + 1);
     historyStack.push(proxied);
@@ -70,24 +65,9 @@ function goProxy(url) {
 }
 
 goBtn.onclick = () => loadUrl(address.value || HOME);
-address.addEventListener('keydown', (e) => { if (e.key === 'Enter') goBtn.click(); });
-
-backBtn.onclick = () => {
-  if (historyPos > 0) {
-    historyPos--;
-    view.src = historyStack[historyPos];
-    address.value = decodeURIComponent(new URL(historyStack[historyPos], location.href).searchParams.get('u'));
-    updateNav();
-  }
-};
-forwardBtn.onclick = () => {
-  if (historyPos < historyStack.length -1) {
-    historyPos++;
-    view.src = historyStack[historyPos];
-    address.value = decodeURIComponent(new URL(historyStack[historyPos], location.href).searchParams.get('u'));
-    updateNav();
-  }
-};
+address.addEventListener('keydown', e => { if (e.key === 'Enter') goBtn.click(); });
+backBtn.onclick = () => { if (historyPos > 0) { historyPos--; view.src = historyStack[historyPos]; address.value = decodeURIComponent(new URL(historyStack[historyPos], location.href).searchParams.get('u')); updateNav(); } };
+forwardBtn.onclick = () => { if (historyPos < historyStack.length -1) { historyPos++; view.src = historyStack[historyPos]; address.value = decodeURIComponent(new URL(historyStack[historyPos], location.href).searchParams.get('u')); updateNav(); } };
 reloadBtn.onclick = () => { if (historyPos >=0) view.src = historyStack[historyPos]; };
 homeBtn.onclick = () => loadUrl(HOME);
 
@@ -100,9 +80,7 @@ function saveFavorite(url) {
   }
 }
 
-favBtn.onclick = () => {
-  if (address.value) saveFavorite(address.value);
-};
+favBtn.onclick = () => { if (address.value) saveFavorite(address.value); };
 
 function renderFavs() {
   favBar.innerHTML = '';
