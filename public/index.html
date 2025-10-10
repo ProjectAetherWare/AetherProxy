@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Mini Proxy Browser</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:0; height:100vh; display:flex; flex-direction:column; }
+    .toolbar { display:flex; gap:6px; padding:8px; background:#f3f3f4; align-items:center; }
+    .btn { padding:6px 10px; border-radius:6px; border:1px solid #ddd; background:#fff; cursor:pointer; }
+    .address { flex:1; padding:6px 8px; border:1px solid #ccc; border-radius:6px; }
+    .favorites { padding:8px; background:#fafafa; border-top:1px solid #eee; display:flex; gap:6px; overflow:auto; }
+    iframe { flex:1; border-top:1px solid #ddd; width:100%; height:100%; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button id="back" class="btn">◀</button>
+    <button id="forward" class="btn">▶</button>
+    <button id="reload" class="btn">⟳</button>
+    <input id="address" class="address" placeholder="Search DuckDuckGo or type a URL" />
+    <button id="go" class="btn">Go</button>
+    <button id="home" class="btn">🏠</button>
+    <button id="fav" class="btn">☆</button>
+  </div>
+
+  <div class="favorites" id="favBar"></div>
+
+  <iframe id="view" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+
+<script>
+const view = document.getElementById('view');
+const address = document.getElementById('address');
+const goBtn = document.getElementById('go');
+const backBtn = document.getElementById('back');
+const forwardBtn = document.getElementById('forward');
+const reloadBtn = document.getElementById('reload');
+const homeBtn = document.getElementById('home');
+const favBtn = document.getElementById('fav');
+const favBar = document.getElementById('favBar');
+
+const HOME = 'https://duckduckgo.com/';
+let historyStack = [];
+let historyPos = -1;
+
+function loadUrl(raw) {
+  // if looks like URL, use as-is; otherwise search DuckDuckGo
+  try {
+    new URL(raw);
+    // full URL
+    goProxy(raw);
+  } catch {
+    // treat as search
+    const q = encodeURIComponent(raw);
+    goProxy('https://duckduckgo.com/?q=' + q);
+  }
+}
+
+function goProxy(url) {
+  // set iframe src to our server proxy
+  const proxied = '/proxy?u=' + encodeURIComponent(url);
+  // push history
+  if (historyPos === -1 || historyStack[historyPos] !== proxied) {
+    historyStack = historyStack.slice(0, historyPos + 1);
+    historyStack.push(proxied);
+    historyPos++;
+  }
+  updateNav();
+  view.src = proxied;
+  address.value = url;
+}
+
+goBtn.onclick = () => loadUrl(address.value || HOME);
+address.addEventListener('keydown', (e) => { if (e.key === 'Enter') goBtn.click(); });
+
+backBtn.onclick = () => {
+  if (historyPos > 0) {
+    historyPos--;
+    view.src = historyStack[historyPos];
+    address.value = decodeURIComponent(new URL(historyStack[historyPos], location.href).searchParams.get('u'));
+    updateNav();
+  }
+};
+forwardBtn.onclick = () => {
+  if (historyPos < historyStack.length -1) {
+    historyPos++;
+    view.src = historyStack[historyPos];
+    address.value = decodeURIComponent(new URL(historyStack[historyPos], location.href).searchParams.get('u'));
+    updateNav();
+  }
+};
+reloadBtn.onclick = () => { if (historyPos >=0) view.src = historyStack[historyPos]; };
+homeBtn.onclick = () => loadUrl(HOME);
+
+function saveFavorite(url) {
+  const favs = JSON.parse(localStorage.getItem('favs') || '[]');
+  if (!favs.includes(url)) {
+    favs.push(url);
+    localStorage.setItem('favs', JSON.stringify(favs));
+    renderFavs();
+  }
+}
+
+favBtn.onclick = () => {
+  if (address.value) saveFavorite(address.value);
+};
+
+function renderFavs() {
+  favBar.innerHTML = '';
+  const favs = JSON.parse(localStorage.getItem('favs') || '[]');
+  for (const f of favs) {
+    const b = document.createElement('button');
+    b.className = 'btn';
+    b.textContent = (new URL(f)).hostname;
+    b.title = f;
+    b.onclick = () => loadUrl(f);
+    favBar.appendChild(b);
+  }
+}
+renderFavs();
+loadUrl(HOME);
+function updateNav() {
+  backBtn.disabled = historyPos <= 0;
+  forwardBtn.disabled = historyPos >= historyStack.length -1;
+}
+</script>
+</body>
+</html>
