@@ -1,5 +1,6 @@
 {
-  "name": "simple-proxy",
+  "name": "mini-proxy-browser",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "start": "node server.js"
