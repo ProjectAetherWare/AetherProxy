@@ -8,10 +8,10 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; height: 100vh; display: flex; flex-direction: column; }
 
-  /* Tabs */
-  #tab-bar { display: flex; align-items: center; padding: 5px; background: #ddd; overflow-x: auto; }
-  .tab { padding: 6px 16px; margin-right: 5px; border-radius: 6px 6px 0 0; cursor: pointer; background: #ccc; transition: background 0.2s; }
-  .tab.active { background: #fff; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+  /* Floating Tabs */
+  #tab-bar { position: relative; height: 40px; display: flex; align-items: center; padding: 5px; background: #ddd; overflow-x: auto; }
+  .tab { padding: 6px 16px; margin-right: 5px; border-radius: 6px 6px 0 0; cursor: pointer; background: #ccc; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: background 0.2s; position: relative; }
+  .tab.active { background: #fff; font-weight: bold; z-index: 10; }
   #add-tab { padding: 6px 12px; background: #bbb; border-radius: 50%; cursor: pointer; font-weight: bold; transition: background 0.2s; }
   #add-tab:hover { background: #999; }
 
@@ -27,7 +27,7 @@
   .favorite:hover { background: #ccc; }
 
   /* Iframe */
-  #iframe-container { flex: 1; width: 100%; }
+  #iframe-container { flex: 1; width: 100%; position: relative; }
   iframe { width: 100%; height: 100%; border: none; }
 
   /* Modals */
@@ -38,6 +38,9 @@
   .modal-content button { padding: 10px; border: none; border-radius: 6px; background: #4285f4; color: #fff; cursor: pointer; }
   .modal-content button:hover { background: #357ae8; }
   .modal-close { background:#ccc;color:#000; }
+
+  /* Dragging effect */
+  .dragging { opacity: 0.5; }
 </style>
 </head>
 <body>
@@ -102,8 +105,26 @@ function renderTabs() {
   browserData.tabs.forEach((tab,i)=>{
     const el = document.createElement('div');
     el.className='tab'+(activeTab===i?' active':'');
-    el.textContent = tab.title||tab.url||'New Tab';
+    el.textContent=tab.title||tab.url||'New Tab';
+    el.draggable = true;
+
     el.onclick=()=>{activeTab=i; loadTab(); renderTabs();}
+
+    // Drag events for floating tabs
+    el.addEventListener('dragstart',(e)=>{ el.classList.add('dragging'); e.dataTransfer.setData('text/plain', i); });
+    el.addEventListener('dragend',()=>{ el.classList.remove('dragging'); });
+
+    el.addEventListener('dragover',(e)=>e.preventDefault());
+    el.addEventListener('drop',(e)=>{
+      e.preventDefault();
+      const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+      const toIndex = i;
+      const tab = browserData.tabs.splice(fromIndex,1)[0];
+      browserData.tabs.splice(toIndex,0,tab);
+      activeTab = toIndex;
+      saveData(); renderTabs(); loadTab();
+    });
+
     tabsDiv.appendChild(el);
   });
   // + button
@@ -216,7 +237,6 @@ async function loadThemes(){
     applyTheme(theme);
     localStorage.setItem('customTheme', JSON.stringify(theme));
   }
-  // Load saved theme if exists
   const savedTheme = localStorage.getItem('customTheme');
   if(savedTheme) applyTheme(JSON.parse(savedTheme));
 }
