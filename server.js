@@ -1,7 +1,7 @@
 // server.js
 import express from "express";
 import fetch from "node-fetch";
-import cheerio from "cheerio";
+import { load } from "cheerio"; // <- fixed ESM import
 import rateLimit from "express-rate-limit";
 import { URL } from "url";
 import dns from "dns/promises";
@@ -9,14 +9,14 @@ import dns from "dns/promises";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// rate limiter
+// Rate limiter
 const limiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 60,
+  max: 60
 });
 app.use(limiter);
 
-// block private IPs
+// Block private IPs
 function isPrivateIP(ip) {
   if (!ip) return false;
   return (
@@ -41,7 +41,7 @@ async function resolveHostIsPrivate(hostname) {
   }
 }
 
-// proxy endpoint
+// Proxy endpoint
 app.get("/proxy", async (req, res) => {
   const raw = req.query.u;
   if (!raw) return res.status(400).send("missing url");
@@ -64,14 +64,14 @@ app.get("/proxy", async (req, res) => {
   try {
     const upstreamResp = await fetch(target.toString(), {
       headers: { "User-Agent": req.get("User-Agent") || "ProxyBot/1.0" },
-      redirect: "follow",
+      redirect: "follow"
     });
 
     const contentType = upstreamResp.headers.get("content-type") || "";
 
     if (contentType.includes("text/html")) {
       const text = await upstreamResp.text();
-      const $ = cheerio.load(text);
+      const $ = load(text); // <- use load() from cheerio
 
       function proxifyAttr(i, attrValue) {
         if (!attrValue) return attrValue;
@@ -101,7 +101,7 @@ app.get("/proxy", async (req, res) => {
   }
 });
 
-// serve static frontend
+// Serve static frontend
 app.use(express.static("public"));
 
 app.listen(PORT, () => {
