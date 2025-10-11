@@ -5,33 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mini Firefox Proxy Browser</title>
 <style>
-  /* ---------- RESET ---------- */
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; height: 100vh; display: flex; flex-direction: column; }
 
-  /* ---------- TABS BAR ---------- */
+  /* Tabs */
   #tab-bar { display: flex; align-items: center; padding: 5px; background: #ddd; overflow-x: auto; }
   .tab { padding: 6px 16px; margin-right: 5px; border-radius: 6px 6px 0 0; cursor: pointer; background: #ccc; transition: background 0.2s; }
   .tab.active { background: #fff; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
   #add-tab { padding: 6px 12px; background: #bbb; border-radius: 50%; cursor: pointer; font-weight: bold; transition: background 0.2s; }
   #add-tab:hover { background: #999; }
 
-  /* ---------- NAVIGATION BAR ---------- */
+  /* Nav bar */
   #nav-bar { display: flex; align-items: center; padding: 6px 8px; background: #eee; border-bottom: 1px solid #ccc; }
   #nav-bar button { margin-right: 5px; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; background: #ddd; transition: background 0.2s; }
   #nav-bar button:hover { background: #ccc; }
   #address-bar { flex: 1; padding: 5px 10px; border-radius: 4px; border: 1px solid #aaa; }
 
-  /* ---------- FAVORITES BAR ---------- */
+  /* Favorites bar */
   #favorites-bar { display: flex; padding: 5px; background: #f9f9f9; overflow-x: auto; border-bottom: 1px solid #ccc; }
   .favorite { padding: 5px 12px; margin-right: 5px; border-radius: 6px; background: #ddd; cursor: pointer; transition: background 0.2s; }
   .favorite:hover { background: #ccc; }
 
-  /* ---------- IFRAME ---------- */
+  /* Iframe */
   #iframe-container { flex: 1; width: 100%; }
   iframe { width: 100%; height: 100%; border: none; }
 
-  /* ---------- MODALS ---------- */
+  /* Modals */
   .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); z-index: 999; }
   .modal-content { background: #fff; padding: 20px; border-radius: 10px; width: 400px; max-width: 90%; display: flex; flex-direction: column; gap: 10px; }
   .modal-content h2 { margin-bottom: 10px; }
@@ -73,6 +72,8 @@
     <input type="file" id="importFile" style="display:none;">
     <button id="resetBtn" style="background:#e84545;">Reset Browser</button>
     <select id="themeSelector"></select>
+    <button id="uploadThemeBtn">Upload Theme</button>
+    <input type="file" id="uploadThemeFile" accept=".json" style="display:none;">
     <button id="closeSettingsBtn" class="modal-close">Close</button>
   </div>
 </div>
@@ -202,11 +203,10 @@ document.getElementById('resetBtn').onclick=()=>{
   if(confirm('Reset all browser data?')) { localStorage.clear(); browserData={tabs:[],favorites:[],history:{}}; addTab(); renderTabs(); renderFavorites(); }
 };
 
-// ---------- THEME LOADING ----------
+// ---------- THEME SYSTEM ----------
 async function loadThemes(){
   const selector=document.getElementById('themeSelector');
-  // Example: themes stored in public/themes/*.json
-  const themes=['default.json','dark.json']; // Add your themes here
+  const themes=['default.json','dark.json'];
   for(const t of themes){
     const opt=document.createElement('option'); opt.value=t; opt.textContent=t.replace('.json',''); selector.appendChild(opt);
   }
@@ -214,8 +214,13 @@ async function loadThemes(){
     const res=await fetch('/themes/'+selector.value);
     const theme=await res.json();
     applyTheme(theme);
+    localStorage.setItem('customTheme', JSON.stringify(theme));
   }
+  // Load saved theme if exists
+  const savedTheme = localStorage.getItem('customTheme');
+  if(savedTheme) applyTheme(JSON.parse(savedTheme));
 }
+
 function applyTheme(theme){
   document.getElementById('tab-bar').style.background=theme.topBarBackground||'#ddd';
   document.getElementById('tab-bar').style.color=theme.topBarColor||'#000';
@@ -226,6 +231,20 @@ function applyTheme(theme){
   document.body.style.fontFamily=theme.fontFamily||'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
 }
 
+// ---------- THEME UPLOAD ----------
+document.getElementById('uploadThemeBtn').onclick = () => document.getElementById('uploadThemeFile').click();
+document.getElementById('uploadThemeFile').onchange = async(e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const theme = JSON.parse(text);
+    applyTheme(theme);
+    localStorage.setItem('customTheme', JSON.stringify(theme));
+    alert(`Theme "${theme.name||'Unnamed'}" applied!`);
+  } catch(err){ alert("Invalid theme JSON"); console.error(err); }
+};
+
 // ---------- UI EVENTS ----------
 document.getElementById('goBtn').onclick=()=>goTo(document.getElementById('address-bar').value);
 document.getElementById('address-bar').onkeydown=(e)=>{ if(e.key==='Enter') goTo(e.target.value); };
@@ -234,6 +253,9 @@ document.getElementById('forwardBtn').onclick=forward;
 document.getElementById('reloadBtn').onclick=reload;
 document.getElementById('homeBtn').onclick=home;
 
+// ---------- SAVE DATA ----------
+function saveData(){ localStorage.setItem('browserData', JSON.stringify(browserData)); }
+
 // ---------- INIT ----------
 if(browserData.tabs.length===0) addTab();
 renderTabs();
@@ -241,6 +263,5 @@ renderFavorites();
 loadTab();
 loadThemes();
 </script>
-
 </body>
 </html>
