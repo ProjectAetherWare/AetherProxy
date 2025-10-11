@@ -1,105 +1,246 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Mini Proxy Browser</title>
-  <style>
-    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:0; height:100vh; display:flex; flex-direction:column; }
-    .toolbar { display:flex; gap:6px; padding:8px; background:#f3f3f4; align-items:center; }
-    .btn { padding:6px 10px; border-radius:6px; border:1px solid #ddd; background:#fff; cursor:pointer; }
-    .address { flex:1; padding:6px 8px; border:1px solid #ccc; border-radius:6px; }
-    .favorites { padding:8px; background:#fafafa; border-top:1px solid #eee; display:flex; gap:6px; overflow:auto; }
-    iframe { flex:1; border-top:1px solid #ddd; width:100%; height:100%; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Firefox Proxy Browser</title>
+<style>
+  /* ---------- RESET ---------- */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; height: 100vh; display: flex; flex-direction: column; }
+
+  /* ---------- TABS BAR ---------- */
+  #tab-bar { display: flex; align-items: center; padding: 5px; background: #ddd; overflow-x: auto; }
+  .tab { padding: 6px 16px; margin-right: 5px; border-radius: 6px 6px 0 0; cursor: pointer; background: #ccc; transition: background 0.2s; }
+  .tab.active { background: #fff; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+  #add-tab { padding: 6px 12px; background: #bbb; border-radius: 50%; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+  #add-tab:hover { background: #999; }
+
+  /* ---------- NAVIGATION BAR ---------- */
+  #nav-bar { display: flex; align-items: center; padding: 6px 8px; background: #eee; border-bottom: 1px solid #ccc; }
+  #nav-bar button { margin-right: 5px; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; background: #ddd; transition: background 0.2s; }
+  #nav-bar button:hover { background: #ccc; }
+  #address-bar { flex: 1; padding: 5px 10px; border-radius: 4px; border: 1px solid #aaa; }
+
+  /* ---------- FAVORITES BAR ---------- */
+  #favorites-bar { display: flex; padding: 5px; background: #f9f9f9; overflow-x: auto; border-bottom: 1px solid #ccc; }
+  .favorite { padding: 5px 12px; margin-right: 5px; border-radius: 6px; background: #ddd; cursor: pointer; transition: background 0.2s; }
+  .favorite:hover { background: #ccc; }
+
+  /* ---------- IFRAME ---------- */
+  #iframe-container { flex: 1; width: 100%; }
+  iframe { width: 100%; height: 100%; border: none; }
+
+  /* ---------- MODALS ---------- */
+  .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); z-index: 999; }
+  .modal-content { background: #fff; padding: 20px; border-radius: 10px; width: 400px; max-width: 90%; display: flex; flex-direction: column; gap: 10px; }
+  .modal-content h2 { margin-bottom: 10px; }
+  .modal-content input, .modal-content select { padding: 8px; border-radius: 4px; border: 1px solid #aaa; width: 100%; }
+  .modal-content button { padding: 10px; border: none; border-radius: 6px; background: #4285f4; color: #fff; cursor: pointer; }
+  .modal-content button:hover { background: #357ae8; }
+  .modal-close { background:#ccc;color:#000; }
+</style>
 </head>
 <body>
-  <div class="toolbar">
-    <button id="back" class="btn">◀</button>
-    <button id="forward" class="btn">▶</button>
-    <button id="reload" class="btn">⟳</button>
-    <input id="address" class="address" placeholder="Search DuckDuckGo or type a URL" />
-    <button id="go" class="btn">Go</button>
-    <button id="home" class="btn">🏠</button>
-    <button id="fav" class="btn">☆</button>
+
+<!-- Tabs -->
+<div id="tab-bar"></div>
+
+<!-- Navigation -->
+<div id="nav-bar">
+  <button id="backBtn">◀</button>
+  <button id="forwardBtn">▶</button>
+  <button id="reloadBtn">⟳</button>
+  <input type="text" id="address-bar" placeholder="Enter URL or search...">
+  <button id="goBtn">Go</button>
+  <button id="homeBtn">🏠</button>
+  <button id="settingsBtn">⚙</button>
+  <button id="addBookmarkBtn">★</button>
+</div>
+
+<!-- Favorites / Bookmarklets -->
+<div id="favorites-bar"></div>
+
+<!-- Iframe -->
+<div id="iframe-container"></div>
+
+<!-- Settings Modal -->
+<div id="settings-modal" class="modal">
+  <div class="modal-content">
+    <h2>Browser Settings</h2>
+    <button id="exportBtn">Export Browser Data</button>
+    <button id="importBtn">Import Browser Data</button>
+    <input type="file" id="importFile" style="display:none;">
+    <button id="resetBtn" style="background:#e84545;">Reset Browser</button>
+    <select id="themeSelector"></select>
+    <button id="closeSettingsBtn" class="modal-close">Close</button>
   </div>
+</div>
 
-  <div class="favorites" id="favBar"></div>
-
-  <iframe id="view" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+<!-- Bookmark Creator Modal -->
+<div id="bookmark-modal" class="modal">
+  <div class="modal-content">
+    <h2>Create Bookmark / Bookmarklet</h2>
+    <input type="text" id="bookmarkName" placeholder="Bookmark Name">
+    <input type="text" id="bookmarkURL" placeholder="URL or JS code">
+    <button id="saveBookmarkBtn">Save</button>
+    <button id="closeBookmarkBtn" class="modal-close">Close</button>
+  </div>
+</div>
 
 <script>
-const view = document.getElementById('view');
-const address = document.getElementById('address');
-const goBtn = document.getElementById('go');
-const backBtn = document.getElementById('back');
-const forwardBtn = document.getElementById('forward');
-const reloadBtn = document.getElementById('reload');
-const homeBtn = document.getElementById('home');
-const favBtn = document.getElementById('fav');
-const favBar = document.getElementById('favBar');
+const proxy = '/proxy?u=';
+const homepage = 'https://duckduckgo.com';
+let browserData = JSON.parse(localStorage.getItem('browserData')||'{"tabs":[],"favorites":[],"history":{}}');
+let activeTab = null;
 
-const HOME = 'https://duckduckgo.com/';
-let historyStack = [];
-let historyPos = -1;
+// ---------- TABS ----------
+function renderTabs() {
+  const tabsDiv = document.getElementById('tab-bar');
+  tabsDiv.innerHTML = '';
+  browserData.tabs.forEach((tab,i)=>{
+    const el = document.createElement('div');
+    el.className='tab'+(activeTab===i?' active':'');
+    el.textContent = tab.title||tab.url||'New Tab';
+    el.onclick=()=>{activeTab=i; loadTab(); renderTabs();}
+    tabsDiv.appendChild(el);
+  });
+  // + button
+  const addBtn = document.createElement('div');
+  addBtn.id='add-tab';
+  addBtn.textContent='+';
+  addBtn.onclick=()=>addTab();
+  tabsDiv.appendChild(addBtn);
+}
 
-function loadUrl(raw) {
-  try {
-    new URL(raw);
-    goProxy(raw);
-  } catch {
-    const q = encodeURIComponent(raw);
-    goProxy('https://duckduckgo.com/?q=' + q);
+function addTab(url=homepage) {
+  const tab = { url, history:[url], historyIndex:0, title:'New Tab' };
+  browserData.tabs.push(tab);
+  activeTab = browserData.tabs.length-1;
+  saveData(); renderTabs(); loadTab();
+}
+
+function loadTab() {
+  if(activeTab===null) return;
+  const tab = browserData.tabs[activeTab];
+  document.getElementById('address-bar').value = tab.url;
+  let iframe = document.getElementById('browser-iframe');
+  if(!iframe){
+    iframe = document.createElement('iframe');
+    iframe.id='browser-iframe';
+    document.getElementById('iframe-container').appendChild(iframe);
+  }
+  iframe.src = proxy + encodeURIComponent(tab.url);
+}
+
+// ---------- NAVIGATION ----------
+function goTo(url) {
+  if(!url) return;
+  if(!url.startsWith('http')) url = 'https://duckduckgo.com/?q=' + encodeURIComponent(url);
+  const tab = browserData.tabs[activeTab];
+  tab.history = tab.history.slice(0, tab.historyIndex+1);
+  tab.history.push(url);
+  tab.historyIndex++;
+  tab.url = url;
+  saveData();
+  loadTab();
+}
+function back(){ const tab = browserData.tabs[activeTab]; if(tab.historyIndex>0){ tab.historyIndex--; tab.url=tab.history[tab.historyIndex]; saveData(); loadTab(); } }
+function forward(){ const tab = browserData.tabs[activeTab]; if(tab.historyIndex<tab.history.length-1){ tab.historyIndex++; tab.url=tab.history[tab.historyIndex]; saveData(); loadTab(); } }
+function reload(){ loadTab(); }
+function home(){ goTo(homepage); }
+
+// ---------- FAVORITES / BOOKMARKLETS ----------
+function renderFavorites(){
+  const favDiv = document.getElementById('favorites-bar');
+  favDiv.innerHTML='';
+  browserData.favorites.forEach(f=>{
+    const btn = document.createElement('div');
+    btn.className='favorite';
+    btn.textContent=f.name;
+    btn.onclick=()=>{
+      if(f.url.startsWith('javascript:')){
+        const iframe = document.getElementById('browser-iframe');
+        iframe.contentWindow.eval(f.url.replace(/^javascript:/,''));
+      }else{
+        goTo(f.url);
+      }
+    };
+    favDiv.appendChild(btn);
+  });
+}
+
+// ---------- BOOKMARK CREATOR ----------
+const bookmarkModal = document.getElementById('bookmark-modal');
+document.getElementById('addBookmarkBtn').onclick=()=>bookmarkModal.style.display='flex';
+document.getElementById('closeBookmarkBtn').onclick=()=>bookmarkModal.style.display='none';
+document.getElementById('saveBookmarkBtn').onclick=()=>{
+  const name=document.getElementById('bookmarkName').value;
+  const url=document.getElementById('bookmarkURL').value;
+  if(name && url){ browserData.favorites.push({name,url}); saveData(); renderFavorites(); bookmarkModal.style.display='none'; }
+}
+
+// ---------- SETTINGS MODAL ----------
+const settingsModal = document.getElementById('settings-modal');
+document.getElementById('settingsBtn').onclick=()=>settingsModal.style.display='flex';
+document.getElementById('closeSettingsBtn').onclick=()=>settingsModal.style.display='none';
+document.getElementById('exportBtn').onclick=()=>{
+  const blob = new Blob([JSON.stringify(browserData)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='browserData.json';
+  a.click();
+};
+document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange=(e)=>{
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload=()=>{ browserData=JSON.parse(reader.result); activeTab=0; saveData(); renderTabs(); renderFavorites(); loadTab(); };
+  reader.readAsText(file);
+};
+document.getElementById('resetBtn').onclick=()=>{
+  if(confirm('Reset all browser data?')) { localStorage.clear(); browserData={tabs:[],favorites:[],history:{}}; addTab(); renderTabs(); renderFavorites(); }
+};
+
+// ---------- THEME LOADING ----------
+async function loadThemes(){
+  const selector=document.getElementById('themeSelector');
+  // Example: themes stored in public/themes/*.json
+  const themes=['default.json','dark.json']; // Add your themes here
+  for(const t of themes){
+    const opt=document.createElement('option'); opt.value=t; opt.textContent=t.replace('.json',''); selector.appendChild(opt);
+  }
+  selector.onchange=async()=>{
+    const res=await fetch('/themes/'+selector.value);
+    const theme=await res.json();
+    applyTheme(theme);
   }
 }
-
-function goProxy(url) {
-  const proxied = '/proxy?u=' + encodeURIComponent(url);
-  if (historyPos === -1 || historyStack[historyPos] !== proxied) {
-    historyStack = historyStack.slice(0, historyPos + 1);
-    historyStack.push(proxied);
-    historyPos++;
-  }
-  updateNav();
-  view.src = proxied;
-  address.value = url;
+function applyTheme(theme){
+  document.getElementById('tab-bar').style.background=theme.topBarBackground||'#ddd';
+  document.getElementById('tab-bar').style.color=theme.topBarColor||'#000';
+  document.getElementById('nav-bar').style.background=theme.navBarBackground||'#eee';
+  document.getElementById('nav-bar').style.color=theme.navBarColor||'#000';
+  document.getElementById('favorites-bar').style.background=theme.favoritesBarBackground||'#f9f9f9';
+  document.getElementById('favorites-bar').style.color=theme.favoritesBarColor||'#000';
+  document.body.style.fontFamily=theme.fontFamily||'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
 }
 
-goBtn.onclick = () => loadUrl(address.value || HOME);
-address.addEventListener('keydown', e => { if (e.key === 'Enter') goBtn.click(); });
-backBtn.onclick = () => { if (historyPos > 0) { historyPos--; view.src = historyStack[historyPos]; address.value = decodeURIComponent(new URL(historyStack[historyPos], location.href).searchParams.get('u')); updateNav(); } };
-forwardBtn.onclick = () => { if (historyPos < historyStack.length -1) { historyPos++; view.src = historyStack[historyPos]; address.value = decodeURIComponent(new URL(historyStack[historyPos], location.href).searchParams.get('u')); updateNav(); } };
-reloadBtn.onclick = () => { if (historyPos >=0) view.src = historyStack[historyPos]; };
-homeBtn.onclick = () => loadUrl(HOME);
+// ---------- UI EVENTS ----------
+document.getElementById('goBtn').onclick=()=>goTo(document.getElementById('address-bar').value);
+document.getElementById('address-bar').onkeydown=(e)=>{ if(e.key==='Enter') goTo(e.target.value); };
+document.getElementById('backBtn').onclick=back;
+document.getElementById('forwardBtn').onclick=forward;
+document.getElementById('reloadBtn').onclick=reload;
+document.getElementById('homeBtn').onclick=home;
 
-function saveFavorite(url) {
-  const favs = JSON.parse(localStorage.getItem('favs') || '[]');
-  if (!favs.includes(url)) {
-    favs.push(url);
-    localStorage.setItem('favs', JSON.stringify(favs));
-    renderFavs();
-  }
-}
-
-favBtn.onclick = () => { if (address.value) saveFavorite(address.value); };
-
-function renderFavs() {
-  favBar.innerHTML = '';
-  const favs = JSON.parse(localStorage.getItem('favs') || '[]');
-  for (const f of favs) {
-    const b = document.createElement('button');
-    b.className = 'btn';
-    b.textContent = (new URL(f)).hostname;
-    b.title = f;
-    b.onclick = () => loadUrl(f);
-    favBar.appendChild(b);
-  }
-}
-renderFavs();
-loadUrl(HOME);
-function updateNav() {
-  backBtn.disabled = historyPos <= 0;
-  forwardBtn.disabled = historyPos >= historyStack.length -1;
-}
+// ---------- INIT ----------
+if(browserData.tabs.length===0) addTab();
+renderTabs();
+renderFavorites();
+loadTab();
+loadThemes();
 </script>
+
 </body>
 </html>
