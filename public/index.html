@@ -1,287 +1,386 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mini Firefox Proxy Browser</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AetherProxy</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; height: 100vh; display: flex; flex-direction: column; }
+:root {
+  --accent: #5b7fff;
+  --bg-blur: rgba(25, 25, 25, 0.6);
+  --bg: #121212;
+  --fg: #ffffff;
+  --tab-bg: rgba(40,40,40,0.7);
+  --tab-active: rgba(80,80,80,0.9);
+  --font: "Inter", "Segoe UI", sans-serif;
+}
 
-  /* Floating Tabs */
-  #tab-bar { position: relative; height: 40px; display: flex; align-items: center; padding: 5px; background: #ddd; overflow-x: auto; }
-  .tab { padding: 6px 16px; margin-right: 5px; border-radius: 6px 6px 0 0; cursor: pointer; background: #ccc; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: background 0.2s; position: relative; }
-  .tab.active { background: #fff; font-weight: bold; z-index: 10; }
-  #add-tab { padding: 6px 12px; background: #bbb; border-radius: 50%; cursor: pointer; font-weight: bold; transition: background 0.2s; }
-  #add-tab:hover { background: #999; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--fg);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+}
 
-  /* Nav bar */
-  #nav-bar { display: flex; align-items: center; padding: 6px 8px; background: #eee; border-bottom: 1px solid #ccc; }
-  #nav-bar button { margin-right: 5px; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; background: #ddd; transition: background 0.2s; }
-  #nav-bar button:hover { background: #ccc; }
-  #address-bar { flex: 1; padding: 5px 10px; border-radius: 4px; border: 1px solid #aaa; }
+/* --- Tabs --- */
+#tab-bar {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  background: var(--bg-blur);
+  backdrop-filter: blur(15px);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
 
-  /* Favorites bar */
-  #favorites-bar { display: flex; padding: 5px; background: #f9f9f9; overflow-x: auto; border-bottom: 1px solid #ccc; }
-  .favorite { padding: 5px 12px; margin-right: 5px; border-radius: 6px; background: #ddd; cursor: pointer; transition: background 0.2s; }
-  .favorite:hover { background: #ccc; }
+.tab {
+  background: var(--tab-bg);
+  padding: 6px 12px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.tab.active {
+  background: var(--tab-active);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.tab button {
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 14px;
+  cursor: pointer;
+}
+.tab:hover { background: rgba(70,70,70,0.8); }
+#add-tab {
+  width: 26px;
+  height: 26px;
+  background: var(--tab-bg);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  cursor: pointer;
+}
 
-  /* Iframe */
-  #iframe-container { flex: 1; width: 100%; position: relative; }
-  iframe { width: 100%; height: 100%; border: none; }
+/* --- Top bar --- */
+header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-blur);
+  backdrop-filter: blur(20px);
+  padding: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
 
-  /* Modals */
-  .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); z-index: 999; }
-  .modal-content { background: #fff; padding: 20px; border-radius: 10px; width: 400px; max-width: 90%; display: flex; flex-direction: column; gap: 10px; }
-  .modal-content h2 { margin-bottom: 10px; }
-  .modal-content input, .modal-content select { padding: 8px; border-radius: 4px; border: 1px solid #aaa; width: 100%; }
-  .modal-content button { padding: 10px; border: none; border-radius: 6px; background: #4285f4; color: #fff; cursor: pointer; }
-  .modal-content button:hover { background: #357ae8; }
-  .modal-close { background:#ccc;color:#000; }
+#url {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.08);
+  color: var(--fg);
+  border: none;
+  border-radius: 8px;
+  outline: none;
+  font-size: 14px;
+}
 
-  /* Dragging effect */
-  .dragging { opacity: 0.5; }
+button {
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+button:hover { opacity: 0.8; }
+
+.icon {
+  background: none;
+  color: var(--fg);
+  font-size: 18px;
+  padding: 5px;
+}
+
+/* --- Panels --- */
+.panel {
+  position: absolute;
+  top: 70px;
+  right: 10px;
+  width: 300px;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--bg-blur);
+  backdrop-filter: blur(15px);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  display: none;
+  z-index: 10;
+}
+
+.panel h3 { margin-top: 0; }
+
+#browser {
+  flex: 1;
+  position: relative;
+}
+iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* --- Homepage --- */
+#homepage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-size: cover;
+  background-position: center;
+  text-align: center;
+  transition: opacity 0.3s;
+}
+
+#homepage h1 {
+  font-size: 48px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+#home-search {
+  width: 60%;
+  max-width: 500px;
+  padding: 12px;
+  font-size: 16px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255,255,255,0.1);
+  color: var(--fg);
+  text-align: center;
+}
+
+#pinned {
+  margin-top: 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 20px;
+  max-width: 400px;
+}
+
+.pinned-app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 14px;
+}
+.pinned-app img {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+}
+
+/* Blur backdrop */
+.blur {
+  backdrop-filter: blur(20px);
+}
 </style>
 </head>
 <body>
 
-<!-- Tabs -->
-<div id="tab-bar"></div>
-
-<!-- Navigation -->
-<div id="nav-bar">
-  <button id="backBtn">◀</button>
-  <button id="forwardBtn">▶</button>
-  <button id="reloadBtn">⟳</button>
-  <input type="text" id="address-bar" placeholder="Enter URL or search...">
-  <button id="goBtn">Go</button>
-  <button id="homeBtn">🏠</button>
-  <button id="settingsBtn">⚙</button>
-  <button id="addBookmarkBtn">★</button>
+<div id="tab-bar">
+  <div id="add-tab">+</div>
 </div>
 
-<!-- Favorites / Bookmarklets -->
-<div id="favorites-bar"></div>
+<header>
+  <input id="url" placeholder="Enter URL or search" />
+  <button id="go">Go</button>
+  <button class="icon" id="bookmarksBtn">★</button>
+  <button class="icon" id="settingsBtn">⚙️</button>
+</header>
 
-<!-- Iframe -->
-<div id="iframe-container"></div>
-
-<!-- Settings Modal -->
-<div id="settings-modal" class="modal">
-  <div class="modal-content">
-    <h2>Browser Settings</h2>
-    <button id="exportBtn">Export Browser Data</button>
-    <button id="importBtn">Import Browser Data</button>
-    <input type="file" id="importFile" style="display:none;">
-    <button id="resetBtn" style="background:#e84545;">Reset Browser</button>
-    <select id="themeSelector"></select>
-    <button id="uploadThemeBtn">Upload Theme</button>
-    <input type="file" id="uploadThemeFile" accept=".json" style="display:none;">
-    <button id="closeSettingsBtn" class="modal-close">Close</button>
+<div id="browser">
+  <div id="homepage">
+    <h1>AetherProxy</h1>
+    <input id="home-search" placeholder="Search with DuckDuckGo..." />
+    <div id="pinned"></div>
   </div>
 </div>
 
-<!-- Bookmark Creator Modal -->
-<div id="bookmark-modal" class="modal">
-  <div class="modal-content">
-    <h2>Create Bookmark / Bookmarklet</h2>
-    <input type="text" id="bookmarkName" placeholder="Bookmark Name">
-    <input type="text" id="bookmarkURL" placeholder="URL or JS code">
-    <button id="saveBookmarkBtn">Save</button>
-    <button id="closeBookmarkBtn" class="modal-close">Close</button>
-  </div>
+<!-- Bookmarks Panel -->
+<div id="bookmarksPanel" class="panel">
+  <h3>Bookmarks</h3>
+  <ul id="bookmarksList"></ul>
+  <h4>Add Bookmark</h4>
+  <input id="bmName" placeholder="Name" />
+  <input id="bmUrl" placeholder="URL" />
+  <button id="saveBookmark">Save</button>
+</div>
+
+<!-- Settings Panel -->
+<div id="settingsPanel" class="panel">
+  <h3>Settings</h3>
+  <button id="exportData">Export Browser Data</button>
+  <button id="importData">Import Browser Data</button>
+  <input type="file" id="importFile" style="display:none" accept=".json" />
+  <hr/>
+  <h4>Theme Upload</h4>
+  <input type="file" id="themeFile" accept=".json" />
 </div>
 
 <script>
-const proxy = '/proxy?u=';
-const homepage = 'https://duckduckgo.com';
-let browserData = JSON.parse(localStorage.getItem('browserData')||'{"tabs":[],"favorites":[],"history":{}}');
-let activeTab = null;
+let tabs = [];
+let currentTab = null;
 
-// ---------- TABS ----------
-function renderTabs() {
-  const tabsDiv = document.getElementById('tab-bar');
-  tabsDiv.innerHTML = '';
-  browserData.tabs.forEach((tab,i)=>{
-    const el = document.createElement('div');
-    el.className='tab'+(activeTab===i?' active':'');
-    el.textContent=tab.title||tab.url||'New Tab';
-    el.draggable = true;
+function createTab(url = "home") {
+  const id = Date.now().toString();
+  const iframe = document.createElement("iframe");
+  iframe.dataset.id = id;
+  iframe.style.display = "none";
 
-    el.onclick=()=>{activeTab=i; loadTab(); renderTabs();}
+  if (url !== "home") {
+    iframe.src = url.startsWith("http") ? url : `https://duckduckgo.com/?q=${encodeURIComponent(url)}`;
+    document.getElementById("homepage").style.display = "none";
+  }
 
-    // Drag events for floating tabs
-    el.addEventListener('dragstart',(e)=>{ el.classList.add('dragging'); e.dataTransfer.setData('text/plain', i); });
-    el.addEventListener('dragend',()=>{ el.classList.remove('dragging'); });
+  const tab = document.createElement("div");
+  tab.classList.add("tab");
+  tab.dataset.id = id;
+  tab.innerHTML = `<span>${url === "home" ? "New Tab" : new URL(iframe.src).hostname}</span> <button class="close">×</button>`;
+  tab.querySelector(".close").onclick = e => { e.stopPropagation(); closeTab(id); };
+  tab.onclick = () => switchTab(id);
 
-    el.addEventListener('dragover',(e)=>e.preventDefault());
-    el.addEventListener('drop',(e)=>{
-      e.preventDefault();
-      const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-      const toIndex = i;
-      const tab = browserData.tabs.splice(fromIndex,1)[0];
-      browserData.tabs.splice(toIndex,0,tab);
-      activeTab = toIndex;
-      saveData(); renderTabs(); loadTab();
-    });
+  document.getElementById("tab-bar").insertBefore(tab, document.getElementById("add-tab"));
+  document.getElementById("browser").appendChild(iframe);
+  tabs.push({ id, iframe, tab, url });
+  switchTab(id);
+}
 
-    tabsDiv.appendChild(el);
+function switchTab(id) {
+  tabs.forEach(t => {
+    t.iframe.style.display = t.id === id ? "block" : "none";
+    t.tab.classList.toggle("active", t.id === id);
   });
-  // + button
-  const addBtn = document.createElement('div');
-  addBtn.id='add-tab';
-  addBtn.textContent='+';
-  addBtn.onclick=()=>addTab();
-  tabsDiv.appendChild(addBtn);
+  const t = tabs.find(t => t.id === id);
+  document.getElementById("homepage").style.display = t && t.url === "home" ? "flex" : "none";
+  currentTab = id;
 }
 
-function addTab(url=homepage) {
-  const tab = { url, history:[url], historyIndex:0, title:'New Tab' };
-  browserData.tabs.push(tab);
-  activeTab = browserData.tabs.length-1;
-  saveData(); renderTabs(); loadTab();
+function closeTab(id) {
+  const t = tabs.find(t => t.id === id);
+  if (!t) return;
+  t.iframe.remove();
+  t.tab.remove();
+  tabs = tabs.filter(x => x.id !== id);
+  if (tabs.length) switchTab(tabs[tabs.length - 1].id);
+  else createTab("home");
 }
 
-function loadTab() {
-  if(activeTab===null) return;
-  const tab = browserData.tabs[activeTab];
-  document.getElementById('address-bar').value = tab.url;
-  let iframe = document.getElementById('browser-iframe');
-  if(!iframe){
-    iframe = document.createElement('iframe');
-    iframe.id='browser-iframe';
-    document.getElementById('iframe-container').appendChild(iframe);
+document.getElementById("add-tab").onclick = () => createTab("home");
+document.getElementById("go").onclick = () => {
+  const val = document.getElementById("url").value.trim();
+  const current = tabs.find(t => t.id === currentTab);
+  if (!val || !current) return;
+  current.url = val;
+  if (val.startsWith("javascript:")) {
+    current.iframe.contentWindow.eval(val.replace("javascript:", ""));
+  } else {
+    current.iframe.src = val.startsWith("http") ? val : `https://duckduckgo.com/?q=${encodeURIComponent(val)}`;
+    current.tab.querySelector("span").textContent = new URL(current.iframe.src).hostname;
+    document.getElementById("homepage").style.display = "none";
   }
-  iframe.src = proxy + encodeURIComponent(tab.url);
-}
+};
 
-// ---------- NAVIGATION ----------
-function goTo(url) {
-  if(!url) return;
-  if(!url.startsWith('http')) url = 'https://duckduckgo.com/?q=' + encodeURIComponent(url);
-  const tab = browserData.tabs[activeTab];
-  tab.history = tab.history.slice(0, tab.historyIndex+1);
-  tab.history.push(url);
-  tab.historyIndex++;
-  tab.url = url;
-  saveData();
-  loadTab();
-}
-function back(){ const tab = browserData.tabs[activeTab]; if(tab.historyIndex>0){ tab.historyIndex--; tab.url=tab.history[tab.historyIndex]; saveData(); loadTab(); } }
-function forward(){ const tab = browserData.tabs[activeTab]; if(tab.historyIndex<tab.history.length-1){ tab.historyIndex++; tab.url=tab.history[tab.historyIndex]; saveData(); loadTab(); } }
-function reload(){ loadTab(); }
-function home(){ goTo(homepage); }
+/* Search from homepage */
+document.getElementById("home-search").addEventListener("keypress", e => {
+  if (e.key === "Enter") {
+    const q = e.target.value;
+    createTab(`https://duckduckgo.com/?q=${encodeURIComponent(q)}`);
+  }
+});
 
-// ---------- FAVORITES / BOOKMARKLETS ----------
-function renderFavorites(){
-  const favDiv = document.getElementById('favorites-bar');
-  favDiv.innerHTML='';
-  browserData.favorites.forEach(f=>{
-    const btn = document.createElement('div');
-    btn.className='favorite';
-    btn.textContent=f.name;
-    btn.onclick=()=>{
-      if(f.url.startsWith('javascript:')){
-        const iframe = document.getElementById('browser-iframe');
-        iframe.contentWindow.eval(f.url.replace(/^javascript:/,''));
-      }else{
-        goTo(f.url);
-      }
-    };
-    favDiv.appendChild(btn);
+/* Panels toggle + close on outside click */
+const togglePanel = id => {
+  const panel = document.getElementById(id);
+  const visible = panel.style.display === "block";
+  document.querySelectorAll(".panel").forEach(p => p.style.display = "none");
+  if (!visible) panel.style.display = "block";
+};
+document.getElementById("bookmarksBtn").onclick = () => togglePanel("bookmarksPanel");
+document.getElementById("settingsBtn").onclick = () => togglePanel("settingsPanel");
+document.addEventListener("click", e => {
+  if (![...document.querySelectorAll(".panel, .icon")].some(el => el.contains(e.target))) {
+    document.querySelectorAll(".panel").forEach(p => p.style.display = "none");
+  }
+});
+
+/* Bookmarks */
+let bookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+const renderBookmarks = () => {
+  const ul = document.getElementById("bookmarksList");
+  ul.innerHTML = "";
+  bookmarks.forEach(bm => {
+    const li = document.createElement("li");
+    li.innerHTML = `<a href="#">${bm.name}</a>`;
+    li.querySelector("a").onclick = () => createTab(bm.url);
+    ul.appendChild(li);
   });
-}
-
-// ---------- BOOKMARK CREATOR ----------
-const bookmarkModal = document.getElementById('bookmark-modal');
-document.getElementById('addBookmarkBtn').onclick=()=>bookmarkModal.style.display='flex';
-document.getElementById('closeBookmarkBtn').onclick=()=>bookmarkModal.style.display='none';
-document.getElementById('saveBookmarkBtn').onclick=()=>{
-  const name=document.getElementById('bookmarkName').value;
-  const url=document.getElementById('bookmarkURL').value;
-  if(name && url){ browserData.favorites.push({name,url}); saveData(); renderFavorites(); bookmarkModal.style.display='none'; }
-}
-
-// ---------- SETTINGS MODAL ----------
-const settingsModal = document.getElementById('settings-modal');
-document.getElementById('settingsBtn').onclick=()=>settingsModal.style.display='flex';
-document.getElementById('closeSettingsBtn').onclick=()=>settingsModal.style.display='none';
-document.getElementById('exportBtn').onclick=()=>{
-  const blob = new Blob([JSON.stringify(browserData)],{type:'application/json'});
-  const a = document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='browserData.json';
-  a.click();
 };
-document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
-document.getElementById('importFile').onchange=(e)=>{
+renderBookmarks();
+document.getElementById("saveBookmark").onclick = () => {
+  const name = bmName.value.trim(), url = bmUrl.value.trim();
+  if (!name || !url) return alert("Missing fields!");
+  bookmarks.push({ name, url });
+  localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
+  renderBookmarks();
+  bmName.value = bmUrl.value = "";
+};
+
+/* Theme Upload */
+themeFile.onchange = e => {
   const file = e.target.files[0];
-  const reader = new FileReader();
-  reader.onload=()=>{ browserData=JSON.parse(reader.result); activeTab=0; saveData(); renderTabs(); renderFavorites(); loadTab(); };
-  reader.readAsText(file);
-};
-document.getElementById('resetBtn').onclick=()=>{
-  if(confirm('Reset all browser data?')) { localStorage.clear(); browserData={tabs:[],favorites:[],history:{}}; addTab(); renderTabs(); renderFavorites(); }
-};
-
-// ---------- THEME SYSTEM ----------
-async function loadThemes(){
-  const selector=document.getElementById('themeSelector');
-  const themes=['default.json','dark.json'];
-  for(const t of themes){
-    const opt=document.createElement('option'); opt.value=t; opt.textContent=t.replace('.json',''); selector.appendChild(opt);
-  }
-  selector.onchange=async()=>{
-    const res=await fetch('/themes/'+selector.value);
-    const theme=await res.json();
-    applyTheme(theme);
-    localStorage.setItem('customTheme', JSON.stringify(theme));
-  }
-  const savedTheme = localStorage.getItem('customTheme');
-  if(savedTheme) applyTheme(JSON.parse(savedTheme));
-}
-
-function applyTheme(theme){
-  document.getElementById('tab-bar').style.background=theme.topBarBackground||'#ddd';
-  document.getElementById('tab-bar').style.color=theme.topBarColor||'#000';
-  document.getElementById('nav-bar').style.background=theme.navBarBackground||'#eee';
-  document.getElementById('nav-bar').style.color=theme.navBarColor||'#000';
-  document.getElementById('favorites-bar').style.background=theme.favoritesBarBackground||'#f9f9f9';
-  document.getElementById('favorites-bar').style.color=theme.favoritesBarColor||'#000';
-  document.body.style.fontFamily=theme.fontFamily||'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
-}
-
-// ---------- THEME UPLOAD ----------
-document.getElementById('uploadThemeBtn').onclick = () => document.getElementById('uploadThemeFile').click();
-document.getElementById('uploadThemeFile').onchange = async(e)=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  try{
-    const text = await file.text();
-    const theme = JSON.parse(text);
-    applyTheme(theme);
-    localStorage.setItem('customTheme', JSON.stringify(theme));
-    alert(`Theme "${theme.name||'Unnamed'}" applied!`);
-  } catch(err){ alert("Invalid theme JSON"); console.error(err); }
+  if (!file) return;
+  file.text().then(json => {
+    const theme = JSON.parse(json);
+    for (const key in theme) {
+      document.documentElement.style.setProperty(`--${key}`, theme[key]);
+    }
+  });
 };
 
-// ---------- UI EVENTS ----------
-document.getElementById('goBtn').onclick=()=>goTo(document.getElementById('address-bar').value);
-document.getElementById('address-bar').onkeydown=(e)=>{ if(e.key==='Enter') goTo(e.target.value); };
-document.getElementById('backBtn').onclick=back;
-document.getElementById('forwardBtn').onclick=forward;
-document.getElementById('reloadBtn').onclick=reload;
-document.getElementById('homeBtn').onclick=home;
+/* Default homepage pinned apps */
+const pinnedApps = [
+  { name: "YouTube", url: "https://youtube.com", icon: "https://www.youtube.com/s/desktop/6e143bfa/img/favicon_144.png" },
+  { name: "DuckDuckGo", url: "https://duckduckgo.com", icon: "https://duckduckgo.com/favicon.ico" },
+  { name: "Reddit", url: "https://reddit.com", icon: "https://www.redditstatic.com/desktop2x/img/favicon/apple-icon-120x120.png" }
+];
+const pinnedDiv = document.getElementById("pinned");
+pinnedApps.forEach(app => {
+  const a = document.createElement("a");
+  a.className = "pinned-app";
+  a.href = "#";
+  a.innerHTML = `<img src="${app.icon}"><span>${app.name}</span>`;
+  a.onclick = () => createTab(app.url);
+  pinnedDiv.appendChild(a);
+});
 
-// ---------- SAVE DATA ----------
-function saveData(){ localStorage.setItem('browserData', JSON.stringify(browserData)); }
-
-// ---------- INIT ----------
-if(browserData.tabs.length===0) addTab();
-renderTabs();
-renderFavorites();
-loadTab();
-loadThemes();
+/* Start with homepage */
+createTab("home");
 </script>
 </body>
 </html>
