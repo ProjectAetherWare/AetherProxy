@@ -3,18 +3,19 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AetherProxy</title>
+<title>AetherProxy Browser</title>
+<link rel="icon" href="https://cdn-icons-png.flaticon.com/512/892/892781.png" type="image/png">
+
 <style>
 :root {
   --accent: #5b7fff;
-  --bg-blur: rgba(25, 25, 25, 0.6);
+  --bg-blur: rgba(25,25,25,0.6);
   --bg: #121212;
   --fg: #ffffff;
   --tab-bg: rgba(40,40,40,0.7);
   --tab-active: rgba(80,80,80,0.9);
   --font: "Inter", "Segoe UI", sans-serif;
 }
-
 body {
   margin: 0;
   font-family: var(--font);
@@ -27,7 +28,7 @@ body {
   backdrop-filter: blur(20px);
 }
 
-/* --- Tabs --- */
+/* Tabs */
 #tab-bar {
   display: flex;
   gap: 6px;
@@ -36,7 +37,6 @@ body {
   backdrop-filter: blur(15px);
   border-bottom: 1px solid rgba(255,255,255,0.1);
 }
-
 .tab {
   background: var(--tab-bg);
   padding: 6px 12px;
@@ -71,7 +71,7 @@ body {
   cursor: pointer;
 }
 
-/* --- Top bar --- */
+/* Top bar */
 header {
   display: flex;
   align-items: center;
@@ -81,7 +81,6 @@ header {
   padding: 10px;
   border-bottom: 1px solid rgba(255,255,255,0.1);
 }
-
 #url {
   flex: 1;
   padding: 8px 12px;
@@ -92,7 +91,6 @@ header {
   outline: none;
   font-size: 14px;
 }
-
 button {
   background: var(--accent);
   border: none;
@@ -103,7 +101,6 @@ button {
   transition: 0.2s;
 }
 button:hover { opacity: 0.8; }
-
 .icon {
   background: none;
   color: var(--fg);
@@ -111,13 +108,13 @@ button:hover { opacity: 0.8; }
   padding: 5px;
 }
 
-/* --- Panels --- */
+/* Panels */
 .panel {
   position: absolute;
   top: 70px;
   right: 10px;
-  width: 300px;
-  max-height: 70vh;
+  width: 320px;
+  max-height: 80vh;
   overflow-y: auto;
   background: var(--bg-blur);
   backdrop-filter: blur(15px);
@@ -127,7 +124,6 @@ button:hover { opacity: 0.8; }
   display: none;
   z-index: 10;
 }
-
 .panel h3 { margin-top: 0; }
 
 #browser {
@@ -140,7 +136,7 @@ iframe {
   border: none;
 }
 
-/* --- Homepage --- */
+/* Homepage */
 #homepage {
   position: absolute;
   inset: 0;
@@ -153,13 +149,11 @@ iframe {
   text-align: center;
   transition: opacity 0.3s;
 }
-
 #homepage h1 {
   font-size: 48px;
   font-weight: 700;
   margin-bottom: 20px;
 }
-
 #home-search {
   width: 60%;
   max-width: 500px;
@@ -171,7 +165,6 @@ iframe {
   color: var(--fg);
   text-align: center;
 }
-
 #pinned {
   margin-top: 30px;
   display: grid;
@@ -179,7 +172,6 @@ iframe {
   gap: 20px;
   max-width: 400px;
 }
-
 .pinned-app {
   display: flex;
   flex-direction: column;
@@ -195,17 +187,25 @@ iframe {
   border-radius: 10px;
 }
 
-/* Blur backdrop */
-.blur {
-  backdrop-filter: blur(20px);
+/* Theme maker inputs */
+#themeMaker label {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+}
+#themeMaker input {
+  width: 100%;
+  padding: 4px;
+  border-radius: 5px;
+  border: none;
+  background: rgba(255,255,255,0.1);
+  color: var(--fg);
 }
 </style>
 </head>
 <body>
 
-<div id="tab-bar">
-  <div id="add-tab">+</div>
-</div>
+<div id="tab-bar"><div id="add-tab">+</div></div>
 
 <header>
   <input id="url" placeholder="Enter URL or search" />
@@ -222,7 +222,7 @@ iframe {
   </div>
 </div>
 
-<!-- Bookmarks Panel -->
+<!-- Bookmarks -->
 <div id="bookmarksPanel" class="panel">
   <h3>Bookmarks</h3>
   <ul id="bookmarksList"></ul>
@@ -232,20 +232,33 @@ iframe {
   <button id="saveBookmark">Save</button>
 </div>
 
-<!-- Settings Panel -->
+<!-- Settings -->
 <div id="settingsPanel" class="panel">
   <h3>Settings</h3>
-  <button id="exportData">Export Browser Data</button>
-  <button id="importData">Import Browser Data</button>
-  <input type="file" id="importFile" style="display:none" accept=".json" />
+  <label><input type="checkbox" id="blankOnStart"> Open AetherProxy inside about:blank (replace tab with Classroom)</label>
+  <select id="blankMode">
+    <option value="tab">New Tab</option>
+    <option value="window">New Window</option>
+  </select>
   <hr/>
-  <h4>Theme Upload</h4>
+  <h4>Theme</h4>
   <input type="file" id="themeFile" accept=".json" />
+  <button id="exportTheme">Export Current Theme</button>
+  <hr/>
+  <h4>Built-in Theme Maker</h4>
+  <div id="themeMaker">
+    <label>Accent Color</label><input type="color" id="accentInput">
+    <label>Background</label><input type="color" id="bgInput">
+    <label>Foreground</label><input type="color" id="fgInput">
+    <label>Font Family</label><input type="text" id="fontInput" placeholder="Inter, Arial, etc.">
+    <button id="applyTheme">Apply</button>
+  </div>
 </div>
 
 <script>
 let tabs = [];
 let currentTab = null;
+const homepage = document.getElementById("homepage");
 
 function createTab(url = "home") {
   const id = Date.now().toString();
@@ -255,7 +268,7 @@ function createTab(url = "home") {
 
   if (url !== "home") {
     iframe.src = url.startsWith("http") ? url : `https://duckduckgo.com/?q=${encodeURIComponent(url)}`;
-    document.getElementById("homepage").style.display = "none";
+    homepage.style.display = "none";
   }
 
   const tab = document.createElement("div");
@@ -277,7 +290,7 @@ function switchTab(id) {
     t.tab.classList.toggle("active", t.id === id);
   });
   const t = tabs.find(t => t.id === id);
-  document.getElementById("homepage").style.display = t && t.url === "home" ? "flex" : "none";
+  homepage.style.display = t && t.url === "home" ? "flex" : "none";
   currentTab = id;
 }
 
@@ -296,17 +309,15 @@ document.getElementById("go").onclick = () => {
   const val = document.getElementById("url").value.trim();
   const current = tabs.find(t => t.id === currentTab);
   if (!val || !current) return;
-  current.url = val;
-  if (val.startsWith("javascript:")) {
-    current.iframe.contentWindow.eval(val.replace("javascript:", ""));
-  } else {
+  if (val.startsWith("javascript:")) current.iframe.contentWindow.eval(val.replace("javascript:", ""));
+  else {
+    current.url = val;
     current.iframe.src = val.startsWith("http") ? val : `https://duckduckgo.com/?q=${encodeURIComponent(val)}`;
     current.tab.querySelector("span").textContent = new URL(current.iframe.src).hostname;
-    document.getElementById("homepage").style.display = "none";
+    homepage.style.display = "none";
   }
 };
 
-/* Search from homepage */
 document.getElementById("home-search").addEventListener("keypress", e => {
   if (e.key === "Enter") {
     const q = e.target.value;
@@ -314,7 +325,7 @@ document.getElementById("home-search").addEventListener("keypress", e => {
   }
 });
 
-/* Panels toggle + close on outside click */
+/* Panels */
 const togglePanel = id => {
   const panel = document.getElementById(id);
   const visible = panel.style.display === "block";
@@ -351,7 +362,33 @@ document.getElementById("saveBookmark").onclick = () => {
   bmName.value = bmUrl.value = "";
 };
 
-/* Theme Upload */
+/* About:blank + Classroom startup */
+const blankOnStart = document.getElementById("blankOnStart");
+const blankMode = document.getElementById("blankMode");
+const savedSettings = JSON.parse(localStorage.getItem("aetherSettings") || "{}");
+if (savedSettings.blankOnStart) blankOnStart.checked = true;
+if (savedSettings.blankMode) blankMode.value = savedSettings.blankMode;
+blankOnStart.onchange = blankMode.onchange = () => {
+  localStorage.setItem("aetherSettings", JSON.stringify({
+    blankOnStart: blankOnStart.checked,
+    blankMode: blankMode.value
+  }));
+};
+window.onload = () => {
+  if (blankOnStart.checked) {
+    if (blankMode.value === "window") {
+      const win = window.open("about:blank");
+      win.document.write(`<iframe src="${location.href}" style="width:100%;height:100%;border:none;"></iframe>`);
+      location.replace("https://classroom.google.com");
+    } else {
+      const blank = window.open("about:blank", "_self");
+      blank.document.write(`<iframe src="${location.href}" style="width:100%;height:100%;border:none;"></iframe>`);
+      location.replace("https://classroom.google.com");
+    }
+  }
+};
+
+/* Theme upload/export/maker */
 themeFile.onchange = e => {
   const file = e.target.files[0];
   if (!file) return;
@@ -362,8 +399,31 @@ themeFile.onchange = e => {
     }
   });
 };
+document.getElementById("exportTheme").onclick = () => {
+  const theme = {
+    accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim(),
+    bg: getComputedStyle(document.documentElement).getPropertyValue("--bg").trim(),
+    fg: getComputedStyle(document.documentElement).getPropertyValue("--fg").trim(),
+    font: getComputedStyle(document.documentElement).getPropertyValue("--font").trim()
+  };
+  const blob = new Blob([JSON.stringify(theme, null, 2)], {type: "application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "aetherproxy-theme.json";
+  a.click();
+};
 
-/* Default homepage pinned apps */
+/* Built-in theme maker */
+const applyTheme = () => {
+  const accent = accentInput.value, bg = bgInput.value, fg = fgInput.value, font = fontInput.value;
+  document.documentElement.style.setProperty("--accent", accent);
+  document.documentElement.style.setProperty("--bg", bg);
+  document.documentElement.style.setProperty("--fg", fg);
+  document.documentElement.style.setProperty("--font", font);
+};
+document.getElementById("applyTheme").onclick = applyTheme;
+
+/* Pinned apps */
 const pinnedApps = [
   { name: "YouTube", url: "https://youtube.com", icon: "https://www.youtube.com/s/desktop/6e143bfa/img/favicon_144.png" },
   { name: "DuckDuckGo", url: "https://duckduckgo.com", icon: "https://duckduckgo.com/favicon.ico" },
@@ -379,7 +439,7 @@ pinnedApps.forEach(app => {
   pinnedDiv.appendChild(a);
 });
 
-/* Start with homepage */
+/* Startup */
 createTab("home");
 </script>
 </body>
